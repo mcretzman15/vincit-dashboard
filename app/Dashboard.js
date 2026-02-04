@@ -6,10 +6,95 @@ import {
   PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
 
+// ============================================================
+// HUBSPOT CONFIGURATION - SOURCE OF TRUTH (Updated 2026-02-04)
+// ============================================================
+
+// Pipeline IDs and Labels (CORRECTED to match HubSpot)
+const PIPELINE_OPTIONS = [
+  { id: '852403303', name: 'SAM Pipeline' },
+  { id: '855656590', name: 'Vincit Enterprise' },
+  { id: '855678765', name: 'QSI BDM' },
+];
+
+// Pipeline ID to Name mapping
+const PIPELINE_NAMES = {
+  '852403303': 'SAM Pipeline',
+  '855656590': 'Vincit Enterprise',
+  '855678765': 'QSI BDM',
+};
+
+// Deal Stages - CORRECTED labels (same stages across all 3 pipelines)
+const STAGE_CONFIG = {
+  // SAM Pipeline (852403303)
+  '852403303': {
+    '1270511187': 'Qualification',
+    '1270511188': 'Plant Surveyed',
+    '1270511189': 'Quotes Provided',
+    '1270511190': 'Decision Making',
+    '1270511191': 'Contract Sent',
+    '1270511192': 'Closed Won',
+    '1270511193': 'Closed Lost',
+  },
+  // Vincit Enterprise (855656590)
+  '855656590': {
+    '1276813984': 'Qualification',
+    '1276813985': 'Plant Surveyed',
+    '1276813986': 'Quotes Provided',
+    '1276813987': 'Decision Making',
+    '1276813988': 'Contract Sent',
+    '1276813989': 'Closed Won',
+    '1276813990': 'Closed Lost',
+  },
+  // QSI BDM (855678765)
+  '855678765': {
+    '1276776727': 'Qualification',
+    '1276776728': 'Plant Surveyed',
+    '1276776729': 'Quotes Provided',
+    '1276776730': 'Decision Making',
+    '1276776731': 'Contract Sent',
+    '1276776732': 'Closed Won',
+    '1276776733': 'Closed Lost',
+  },
+};
+
+// Flattened stage names for easy lookup
+const STAGE_NAMES = {
+  // SAM Pipeline stages
+  '1270511187': 'Qualification',
+  '1270511188': 'Plant Surveyed',
+  '1270511189': 'Quotes Provided',
+  '1270511190': 'Decision Making',
+  '1270511191': 'Contract Sent',
+  '1270511192': 'Closed Won',
+  '1270511193': 'Closed Lost',
+  // Vincit Enterprise stages
+  '1276813984': 'Qualification',
+  '1276813985': 'Plant Surveyed',
+  '1276813986': 'Quotes Provided',
+  '1276813987': 'Decision Making',
+  '1276813988': 'Contract Sent',
+  '1276813989': 'Closed Won',
+  '1276813990': 'Closed Lost',
+  // QSI BDM stages
+  '1276776727': 'Qualification',
+  '1276776728': 'Plant Surveyed',
+  '1276776729': 'Quotes Provided',
+  '1276776730': 'Decision Making',
+  '1276776731': 'Contract Sent',
+  '1276776732': 'Closed Won',
+  '1276776733': 'Closed Lost',
+};
+
+// Closed stage IDs
+const CLOSED_WON_STAGES = ['1270511192', '1276813989', '1276776732'];
+const CLOSED_LOST_STAGES = ['1270511193', '1276813990', '1276776733'];
+
 // ===== THEME COLORS =====
 const THEME = { teal: '#0891b2', gray: '#64748b' };
 const COLORS = ['#0891b2', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#ec4899', '#3b82f6', '#64748b'];
 const TEAM_COLORS = {
+  'SAM Pipeline': '#0891b2',
   'SAM': '#0891b2',
   'QSI BDM': '#3b82f6',
   'Vincit Enterprise': '#a855f7',
@@ -29,20 +114,22 @@ const formatDate = (val) => {
   return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+const getStageName = (stageId) => STAGE_NAMES[stageId] || stageId;
+const getPipelineName = (pipelineId) => PIPELINE_NAMES[pipelineId] || pipelineId;
+
 // ===== FORM DATA =====
 const PARENT_ACCOUNTS = [
-  'AFG', 'Ajinomoto', 'Boars Head', 'Bobos', 'Bridgetown Natural Foods',
-  'Cargill', 'Case Farms', 'Dole Fresh Vegetables', 'Essentia Protein Solutions',
-  'F&G Foodgroup', 'Godshalls', 'Greater Omaha Packing', 'Hello Fresh',
-  'Hertzog Beef', 'Intermountain Packing', 'IRCA Group', 'JBS',
-  'John Soules Foods', 'Johnsonville', 'Kellys Foods', 'Mars',
-  'Monogram', 'Peco Foods', 'Pepperidge Farms', 'Perdue',
-  'Producer / Producer Owned Beef', 'Quaker Oats', 'Resers',
-  'Simmons', 'Smithfield', 'Sustainable', 'The Deli Source',
-  'Trinity Frozen Foods', 'Tyson', 'US Foods Stockyards',
-  'Volpi Foods', 'Walmart / Walmart Manufacturing', 'Wayne-Sanderson Farms',
-  'Wholestone Foods', 'Other'
-];
+  'AFG', 'Ajinomoto', 'Boars Head', 'Bob Evans', 'Bobos', 'Brakebush', 'Bridgetown Natural Foods',
+  'Campbells', 'Cargill', 'Case Farms', 'Dole', 'Don Panchos', 'Essentia', 'F&G Foodgroup',
+  'Filet of Chicken', 'Gatorade', 'Godshalls', 'Grandmas Cookies', 'Greater Omaha Packing',
+  'Hello Fresh', 'Hertzog', 'House of Raeford', 'Ingredion', 'Intermountain Packing', 'IRCA Group',
+  'JBS', 'John Soules Foods', 'Johnsonville', 'Kellys Foods', 'Lincoln Premium Poultry', 'Mars',
+  'Mastronardi Produce', 'Monogram', 'Newlyweds Foods', 'Peco Foods', 'Pepperidge Farms', 'Perdue',
+  'Pilgrims', 'Producer Owned Beef', 'Quaker Oats', 'Resers', 'Salmons Meat', 'Simmons',
+  'Smart Chicken', 'Smithfield', 'Sugar Creek Foods', 'Sustainable', 'The Deli Source',
+  'Trinity Frozen Foods', 'Tyson', 'US Foods Stockyards', 'Volpi Foods', 'Walmart',
+  'Wayne-Sanderson', 'Wholestone Foods', 'Other'
+].sort();
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -51,47 +138,51 @@ const US_STATES = [
 ];
 
 const VINCIT_MEMBERS = [
-  'QSI-Beef', 'QSI-Pork', 'QSI-Case Ready', 'QSI-Poultry',
-  'Zee-Nighttime Sanitation', 'Zee-Intervention', 'Zee-Water & Energy',
-  'Zee-F&B Chemicals', 'Zee-GOP', 'TCS', 'ITG (Engineering)', 'Other'
+  'QSI', 'QSI-Beef', 'QSI-Pork', 'QSI-Case Ready', 'QSI-Poultry',
+  'ZEE', 'ZEE F&B', 'ZEE W&E', 'ZEE Intervention', 'ZEE-GOP',
+  'TCS', 'ITG', 'Other'
 ];
 
+// Deal Owners - CORRECTED from HubSpot (22 active owners, alphabetically sorted)
 const DEAL_OWNERS = [
-  { id: '87131928', name: 'Chad Lawrence' },
-  { id: '87129317', name: 'Ben Hope' },
-  { id: '87132088', name: 'Brian Hales' },
-  { id: '87184916', name: 'Greg Atchley' },
-  { id: '87184498', name: 'Eric Wilson' },
-  { id: '87184702', name: 'Ryan McCormick' },
-  { id: '87185119', name: 'Jeremy Bates' },
-  { id: '87132142', name: 'Rikki Ford' },
-  { id: '87238944', name: 'Shane Calhoun' },
-  { id: '87420199', name: 'Matthew Husman' },
+  { id: '87132142', name: 'April Englishbey' },
+  { id: '87856300', name: 'Ben Bebermeyer' },
+  { id: '87184498', name: 'Ben Hope' },
   { id: '86370196', name: 'Brady Field' },
-  { id: '86346498', name: 'Brian Barker' },
-  { id: '87468498', name: 'Phillip Shelton' },
-  { id: '87131891', name: 'Tim Bryant' },
-  { id: '87132015', name: 'Chris Beavers' },
-  { id: '87131966', name: 'Tanner Berryhill' },
-  { id: '87131930', name: 'April Englishbey' },
-  { id: '87184637', name: 'Joe Reed' },
+  { id: '84509028', name: 'Brian Barker' },
+  { id: '87185119', name: 'Brian Hales' },
+  { id: '87131928', name: 'Chad Lawrence' },
+  { id: '87129317', name: 'Chris Beavers' },
+  { id: '87184916', name: 'Eric Wilson' },
+  { id: '87184702', name: 'Greg Atchley' },
+  { id: '87173917', name: 'Jeremy Bates' },
+  { id: '26684738', name: 'Joachim Koch' },
+  { id: '87674892', name: 'Ken Dreyer' },
   { id: '86370312', name: 'Matt Cretzman' },
-].sort((a, b) => a.name.localeCompare(b.name));
-
-const PIPELINE_OPTIONS = [
-  { id: '852403303', name: 'Vincit Enterprise' },
-  { id: '855678765', name: 'QSI BDM' },
-  { id: '855656590', name: 'SAM Pipeline' },
-  { id: 'default', name: 'Sales Pipeline' },
+  { id: '87420199', name: 'Matt Husman' },
+  { id: '87131988', name: 'Phillip Shelton' },
+  { id: '87132040', name: 'Rikki Ford' },
+  { id: '87331887', name: 'Ryan McCormick' },
+  { id: '87238944', name: 'Shane Calhoun' },
+  { id: '87132088', name: 'Tanner Berryhill' },
+  { id: '87816453', name: 'Terry Beavers' },
+  { id: '87077445', name: 'Tim Bryant' },
 ];
 
-const DEAL_TYPES = ['New Business', 'Cross-Sell', 'Renewal'];
+// Owner ID to Name mapping
+const OWNER_NAMES = Object.fromEntries(DEAL_OWNERS.map(o => [o.id, o.name]));
+const getOwnerName = (ownerId) => OWNER_NAMES[ownerId] || 'Unassigned';
 
-// ===== NEW DEAL FORM COMPONENT (styled for slate-900 theme) =====
+const DEAL_TYPES = [
+  { value: 'newbusiness', label: 'New Business' },
+  { value: 'existingbusiness', label: 'Existing Business' },
+];
+
+// ===== NEW DEAL FORM COMPONENT =====
 function NewDealForm() {
   const [form, setForm] = useState({
     parentAccount: '', city: '', state: '', vincitMember: '',
-    pipeline: '852403303', dealType: 'New Business', ownerId: '',
+    pipeline: '852403303', dealType: 'newbusiness', ownerId: '',
     amount: '', closeDate: '', notes: '',
   });
   const [submitting, setSubmitting] = useState(false);
@@ -99,7 +190,7 @@ function NewDealForm() {
 
   const generatedName = useMemo(() => {
     if (!form.parentAccount || !form.city || !form.state || !form.vincitMember) return '';
-    return `${form.parentAccount} - ${form.city}, ${form.state} - ${form.vincitMember}`;
+    return `${form.parentAccount} / ${form.city}, ${form.state} / ${form.vincitMember}`;
   }, [form.parentAccount, form.city, form.state, form.vincitMember]);
 
   const isValid = form.parentAccount && form.city && form.state && form.vincitMember && form.ownerId;
@@ -139,7 +230,7 @@ function NewDealForm() {
         setResult({ type: 'success', message: `Deal created: "${data.dealname}" (ID: ${data.dealId})` });
         setForm({
           parentAccount: '', city: '', state: '', vincitMember: '',
-          pipeline: '852403303', dealType: 'New Business', ownerId: '',
+          pipeline: '852403303', dealType: 'newbusiness', ownerId: '',
           amount: '', closeDate: '', notes: '',
         });
       } else {
@@ -222,7 +313,7 @@ function NewDealForm() {
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Deal Type</label>
             <select value={form.dealType} onChange={e => handleChange('dealType', e.target.value)} className={selectClass}>
-              {DEAL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              {DEAL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
           <div className="md:col-span-2">
@@ -333,7 +424,7 @@ export default function Dashboard() {
     if (!data) return {};
     return {
       All: data.allDeals?.length || 0,
-      SAM: data.allDeals?.filter(d => d.team === 'SAM').length || 0,
+      'SAM Pipeline': data.allDeals?.filter(d => d.team === 'SAM Pipeline' || d.team === 'SAM').length || 0,
       'QSI BDM': data.allDeals?.filter(d => d.team === 'QSI BDM').length || 0,
       'Vincit Enterprise': data.allDeals?.filter(d => d.team === 'Vincit Enterprise').length || 0,
     };
@@ -453,7 +544,7 @@ export default function Dashboard() {
             {/* Pipeline Filters (only show on pipeline tab) */}
             {activeTab === 'pipeline' && (
               <>
-                {['All', 'SAM', 'QSI BDM', 'Vincit Enterprise'].map(f => (
+                {['All', 'SAM Pipeline', 'QSI BDM', 'Vincit Enterprise'].map(f => (
                   <button key={f} onClick={() => setActiveFilter(f)}
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
                       activeFilter === f
@@ -468,11 +559,6 @@ export default function Dashboard() {
                     </span>
                   </button>
                 ))}
-                {activeFilter !== 'All' && data?.teamLeaders?.[activeFilter] && (
-                  <div className="ml-auto text-sm text-slate-400">
-                    Team Leader: <span className="text-white font-medium">{data.teamLeaders[activeFilter]}</span>
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -777,7 +863,7 @@ export default function Dashboard() {
                               <div className="col-span-2 text-right text-sm text-slate-400">{formatCurrency(deal.fiveDayPrice)}/wk</div>
                               <div className="col-span-2 text-center">
                                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-600/50 text-slate-300">
-                                  {deal.stage?.substring(0, 8) || 'N/A'}
+                                  {getStageName(deal.stageId) || deal.stage?.substring(0, 12) || 'N/A'}
                                 </span>
                               </div>
                               <div className={`col-span-2 text-center text-sm ${deal.closeDate ? 'text-slate-400' : 'text-red-400 font-medium'}`}>
