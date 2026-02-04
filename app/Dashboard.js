@@ -75,7 +75,7 @@ const DEAL_OWNERS = [
   { id: '87131966', name: 'Tanner Berryhill' },
   { id: '87131930', name: 'April Englishbey' },
   { id: '87184637', name: 'Joe Reed' },
-  { id: '85498043', name: 'Matt Cretzman' },
+  { id: '86370312', name: 'Matt Cretzman' },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 const PIPELINE_OPTIONS = [
