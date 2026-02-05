@@ -58,6 +58,38 @@ const STAGE_CONFIG = {
   },
 };
 
+// Stage options for form (excludes Closed Won/Lost)
+const STAGE_OPTIONS = {
+  '852403303': [
+    { id: '1270511187', name: 'Qualification' },
+    { id: '1270511188', name: 'Plant Surveyed' },
+    { id: '1270511189', name: 'Quotes Provided' },
+    { id: '1270511190', name: 'Decision Making' },
+    { id: '1270511191', name: 'Contract Sent' },
+  ],
+  '855656590': [
+    { id: '1276813984', name: 'Qualification' },
+    { id: '1276813985', name: 'Plant Surveyed' },
+    { id: '1276813986', name: 'Quotes Provided' },
+    { id: '1276813987', name: 'Decision Making' },
+    { id: '1276813988', name: 'Contract Sent' },
+  ],
+  '855678765': [
+    { id: '1276776727', name: 'Qualification' },
+    { id: '1276776728', name: 'Plant Surveyed' },
+    { id: '1276776729', name: 'Quotes Provided' },
+    { id: '1276776730', name: 'Decision Making' },
+    { id: '1276776731', name: 'Contract Sent' },
+  ],
+};
+
+// Default first stage for each pipeline
+const PIPELINE_FIRST_STAGE = {
+  '852403303': '1270511187',
+  '855656590': '1276813984',
+  '855678765': '1276776727',
+};
+
 // Flattened stage names for easy lookup
 const STAGE_NAMES = {
   // SAM Pipeline stages
@@ -191,7 +223,7 @@ const DEAL_TYPES = [
 function NewDealForm() {
   const [form, setForm] = useState({
     parentAccount: '', city: '', state: '', vincitMember: '',
-    pipeline: '852403303', dealType: 'newbusiness', ownerId: '',
+    pipeline: '852403303', dealstage: '1270511187', dealType: 'newbusiness', ownerId: '',
     amount: '', closeDate: '', notes: '',
   });
   const [submitting, setSubmitting] = useState(false);
@@ -202,10 +234,22 @@ function NewDealForm() {
     return `${form.parentAccount} / ${form.city}, ${form.state} / ${form.vincitMember}`;
   }, [form.parentAccount, form.city, form.state, form.vincitMember]);
 
+  // Get stage options for current pipeline
+  const currentStageOptions = useMemo(() => {
+    return STAGE_OPTIONS[form.pipeline] || STAGE_OPTIONS['852403303'];
+  }, [form.pipeline]);
+
   const isValid = form.parentAccount && form.city && form.state && form.vincitMember && form.ownerId;
 
   const handleChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm(prev => {
+      const newForm = { ...prev, [field]: value };
+      // When pipeline changes, reset stage to first stage of new pipeline
+      if (field === 'pipeline') {
+        newForm.dealstage = PIPELINE_FIRST_STAGE[value] || PIPELINE_FIRST_STAGE['852403303'];
+      }
+      return newForm;
+    });
     if (result) setResult(null);
   };
 
@@ -219,6 +263,7 @@ function NewDealForm() {
       amount: form.amount ? Number(form.amount) : undefined,
       closedate: form.closeDate || undefined,
       pipeline: form.pipeline,
+      dealstage: form.dealstage,
       hubspot_owner_id: form.ownerId,
       deal_type: form.dealType,
       vincit_member_company: form.vincitMember,
@@ -239,7 +284,7 @@ function NewDealForm() {
         setResult({ type: 'success', message: `Deal created: "${data.dealname}" (ID: ${data.dealId})` });
         setForm({
           parentAccount: '', city: '', state: '', vincitMember: '',
-          pipeline: '852403303', dealType: 'newbusiness', ownerId: '',
+          pipeline: '852403303', dealstage: '1270511187', dealType: 'newbusiness', ownerId: '',
           amount: '', closeDate: '', notes: '',
         });
       } else {
@@ -320,12 +365,18 @@ function NewDealForm() {
             </select>
           </div>
           <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Deal Stage</label>
+            <select value={form.dealstage} onChange={e => handleChange('dealstage', e.target.value)} className={selectClass}>
+              {currentStageOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Deal Type</label>
             <select value={form.dealType} onChange={e => handleChange('dealType', e.target.value)} className={selectClass}>
               {DEAL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
-          <div className="md:col-span-2">
+          <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Deal Owner <span className="text-red-400">*</span></label>
             <select value={form.ownerId} onChange={e => handleChange('ownerId', e.target.value)} className={selectClass}>
               <option value="">Select owner...</option>
