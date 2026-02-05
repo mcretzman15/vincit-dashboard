@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 // ============================================================
-// HUBSPOT CONFIGURATION - SOURCE OF TRUTH (Updated 2026-02-04)
+// HUBSPOT CONFIGURATION - SOURCE OF TRUTH (Updated 2026-02-05)
 // ============================================================
 
 // Pipeline IDs and Labels (CORRECTED to match HubSpot)
@@ -80,10 +80,10 @@ const GROUP_MAP = {
 async function fetchAllDeals(token) {
   const allDeals = [];
   let after = undefined;
+  // Removed five_day_price - property does not exist in HubSpot
   const properties = [
     'dealname', 'amount', 'closedate', 'pipeline', 'dealstage',
-    'hubspot_owner_id', 'hs_lastmodifieddate', 'five_day_price',
-    'createdate', 'dealtype'
+    'hubspot_owner_id', 'hs_lastmodifieddate', 'createdate', 'dealtype'
   ];
 
   while (true) {
@@ -164,7 +164,6 @@ export async function GET() {
       id: d.id,
       name: d.properties.dealname || 'Unnamed',
       amount: parseFloat(d.properties.amount) || 0,
-      fiveDayPrice: parseFloat(d.properties.five_day_price) || 0,
       closeDate: d.properties.closedate || null,
       stageId: d.properties.dealstage || '',
       stage: getStageName(d),
@@ -177,10 +176,8 @@ export async function GET() {
     }));
 
     const totalPipeline = allDeals.reduce((s, d) => s + d.amount, 0);
-    const totalWeeklyRevenue = allDeals.reduce((s, d) => s + d.fiveDayPrice, 0);
     const activeDeals = allDeals.length;
     const avgDealSize = activeDeals > 0 ? totalPipeline / activeDeals : 0;
-    const avgWeeklyPerDeal = activeDeals > 0 ? totalWeeklyRevenue / activeDeals : 0;
 
     const noDateDeals = allDeals.filter(d => !d.closeDate);
     const dealsNoCloseDate = noDateDeals.length;
@@ -194,13 +191,26 @@ export async function GET() {
     const atRiskCount = atRiskDeals.length;
     const atRiskValue = atRiskDeals.reduce((s, d) => s + d.amount, 0);
 
+    // Pipeline by Stage aggregation
+    const stageMap = {};
+    allDeals.forEach(d => {
+      const stageName = d.stage;
+      if (!stageMap[stageName]) stageMap[stageName] = { stage: stageName, totalPipeline: 0, deals: 0 };
+      stageMap[stageName].totalPipeline += d.amount;
+      stageMap[stageName].deals += 1;
+    });
+    const pipelineByStage = Object.values(stageMap).sort((a, b) => {
+      // Sort by stage progression order
+      const stageOrder = ['Qualification', 'Plant Surveyed', 'Quotes Provided', 'Decision Making', 'Contract Sent'];
+      return stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage);
+    });
+
     const ownerMap = {};
     allDeals.forEach(d => {
       if (!ownerMap[d.owner]) {
-        ownerMap[d.owner] = { owner: d.owner, team: d.team, totalPipeline: 0, weeklyRevenue: 0, deals: 0, dealList: [] };
+        ownerMap[d.owner] = { owner: d.owner, team: d.team, totalPipeline: 0, deals: 0, dealList: [] };
       }
       ownerMap[d.owner].totalPipeline += d.amount;
-      ownerMap[d.owner].weeklyRevenue += d.fiveDayPrice;
       ownerMap[d.owner].deals += 1;
       ownerMap[d.owner].dealList.push(d);
     });
@@ -235,17 +245,14 @@ export async function GET() {
     });
 
     const topDeals = [...allDeals].sort((a, b) => b.amount - a.amount).slice(0, 15);
-    const topByWeekly = [...allDeals].sort((a, b) => b.fiveDayPrice - a.fiveDayPrice).slice(0, 15);
 
     return NextResponse.json({
       success: true,
       lastUpdated: new Date().toISOString(),
       summary: {
         totalPipeline,
-        totalWeeklyRevenue,
         activeDeals,
         avgDealSize,
-        avgWeeklyPerDeal,
         atRiskCount,
         atRiskValue,
         dealsNoCloseDate,
@@ -253,11 +260,11 @@ export async function GET() {
       },
       pipelineByOwner,
       pipelineByGroup,
+      pipelineByStage,
       pipelineByCloseDate,
       topDeals,
-      topByWeekly,
       noDateDeals: noDateDeals.sort((a, b) => b.amount - a.amount).slice(0, 10),
-      allDeals: allDeals.map(d => ({ id: d.id, team: d.team, amount: d.amount, fiveDayPrice: d.fiveDayPrice })),
+      allDeals: allDeals.map(d => ({ id: d.id, team: d.team, amount: d.amount, stage: d.stage, stageId: d.stageId })),
     });
   } catch (error) {
     console.error('API Error:', error);
