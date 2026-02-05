@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 
 // ============================================================
-// HUBSPOT CONFIGURATION - SOURCE OF TRUTH (Updated 2026-02-04)
+// HUBSPOT CONFIGURATION - SOURCE OF TRUTH (Updated 2026-02-05)
 // ============================================================
 
 // Pipeline IDs and Labels (CORRECTED to match HubSpot)
@@ -89,6 +89,15 @@ const STAGE_NAMES = {
 // Closed stage IDs
 const CLOSED_WON_STAGES = ['1270511192', '1276813989', '1276776732'];
 const CLOSED_LOST_STAGES = ['1270511193', '1276813990', '1276776733'];
+
+// Stage colors for visual display
+const STAGE_COLORS = {
+  'Qualification': '#64748b',
+  'Plant Surveyed': '#3b82f6',
+  'Quotes Provided': '#8b5cf6',
+  'Decision Making': '#f59e0b',
+  'Contract Sent': '#22c55e',
+};
 
 // ===== THEME COLORS =====
 const THEME = { teal: '#0891b2', gray: '#64748b' };
@@ -397,7 +406,6 @@ export default function Dashboard() {
     const owners = data.pipelineByOwner.filter(o => o.team === activeFilter);
     const deals = data.allDeals.filter(d => d.team === activeFilter);
     const totalPipeline = deals.reduce((s, d) => s + d.amount, 0);
-    const totalWeeklyRevenue = deals.reduce((s, d) => s + d.fiveDayPrice, 0);
 
     return {
       ...data,
@@ -406,12 +414,10 @@ export default function Dashboard() {
       summary: {
         ...data.summary,
         totalPipeline,
-        totalWeeklyRevenue,
         activeDeals: deals.length,
         avgDealSize: deals.length > 0 ? totalPipeline / deals.length : 0,
       },
       topDeals: data.topDeals.filter(d => d.team === activeFilter),
-      topByWeekly: data.topByWeekly.filter(d => d.team === activeFilter),
     };
   }, [data, activeFilter]);
 
@@ -459,9 +465,9 @@ export default function Dashboard() {
   const summary = filtered?.summary || {};
   const pipelineByOwner = filtered?.pipelineByOwner || [];
   const pipelineByGroup = data?.pipelineByGroup || [];
+  const pipelineByStage = data?.pipelineByStage || [];
   const pipelineByCloseDate = data?.pipelineByCloseDate || [];
   const topDeals = filtered?.topDeals || [];
-  const topByWeekly = filtered?.topByWeekly || [];
   const noDateDeals = data?.noDateDeals || [];
 
   // Chart data
@@ -484,6 +490,16 @@ export default function Dashboard() {
       pipeline: d.pipeline / 1e6,
       deals: d.deals,
     }));
+
+  // Stage chart data
+  const stageBarData = pipelineByStage.map(s => ({
+    name: s.stage.replace(' ', '\n'),
+    shortName: s.stage.split(' ')[0],
+    pipeline: s.totalPipeline / 1e6,
+    deals: s.deals,
+    fullName: s.stage,
+    color: STAGE_COLORS[s.stage] || THEME.gray,
+  }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
@@ -574,7 +590,7 @@ export default function Dashboard() {
         ) : (
           <>
             {/* ===== KPI CARDS ===== */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="p-2 rounded-lg bg-teal-500/20"><span className="text-teal-400 text-lg">$</span></div>
@@ -595,18 +611,6 @@ export default function Dashboard() {
 
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-amber-500/20"><span className="text-amber-400 text-lg">◷</span></div>
-                  <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Weekly Revenue</span>
-                </div>
-                <div className="text-3xl font-bold text-amber-400">{formatCurrency(summary.totalWeeklyRevenue)}</div>
-                <div className="text-sm text-slate-400">5-Day Price total</div>
-                <div className="mt-2 inline-block px-2 py-1 rounded text-xs font-medium bg-amber-500/20 text-amber-400">
-                  {formatCurrency(summary.totalWeeklyRevenue / 5)}/day
-                </div>
-              </div>
-
-              <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
-                <div className="flex items-center gap-3 mb-2">
                   <div className="p-2 rounded-lg bg-purple-500/20"><span className="text-purple-400 text-lg">↗</span></div>
                   <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Avg Deal Size</span>
                 </div>
@@ -616,11 +620,11 @@ export default function Dashboard() {
 
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-blue-500/20"><span className="text-blue-400 text-lg">⏱</span></div>
-                  <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Avg Weekly/Deal</span>
+                  <div className="p-2 rounded-lg bg-amber-500/20"><span className="text-amber-400 text-lg">⚠</span></div>
+                  <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">No Close Date</span>
                 </div>
-                <div className="text-3xl font-bold text-blue-400">{formatCurrency(summary.avgWeeklyPerDeal)}</div>
-                <div className="text-sm text-slate-400">5-Day Price avg</div>
+                <div className="text-3xl font-bold text-amber-400">{summary.dealsNoCloseDate || 0}</div>
+                <div className="text-sm text-slate-400">{formatCurrency(summary.noCloseDateValue)} at risk</div>
               </div>
             </div>
 
@@ -693,6 +697,32 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* ===== PIPELINE BY STAGE ===== */}
+            <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-slate-400">📊</span>
+                <h2 className="text-lg font-semibold text-white">Pipeline by Deal Stage</h2>
+              </div>
+              <div className="text-xs text-slate-500 mb-3">Value distribution across sales stages</div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={stageBarData} layout="vertical">
+                  <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}M`} />
+                  <YAxis type="category" dataKey="shortName" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: 8 }}
+                    labelStyle={{ color: '#fff' }}
+                    formatter={(v, name, props) => [`$${v.toFixed(1)}M (${props.payload.deals} deals)`, 'Pipeline']}
+                    labelFormatter={(label, payload) => payload[0]?.payload?.fullName || label}
+                  />
+                  <Bar dataKey="pipeline" radius={[0, 4, 4, 0]}>
+                    {stageBarData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
             {/* ===== CLOSE DATE CHART ===== */}
             <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
               <div className="flex items-center gap-3 mb-4">
@@ -714,47 +744,41 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* ===== TOP 10 LISTS ===== */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              {/* Top 10 by Annual Value */}
-              <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-slate-400">↗</span>
-                  <h2 className="text-lg font-semibold text-white">Top 10 by Annual Value</h2>
-                </div>
-                <div className="space-y-2">
-                  {(activeFilter === 'All' ? data?.topDeals : topDeals)?.slice(0, 10).map((deal, i) => (
-                    <div key={`top-annual-${deal.id || i}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700/30">
-                      <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white">{i + 1}</div>
-                      <div className="flex-1 min-w-0"><div className="text-sm text-white truncate">{deal.name}</div></div>
-                      <div className="text-right">
-                        <div className="text-sm font-semibold text-teal-400">{formatCurrency(deal.amount)}</div>
-                        <div className="text-xs text-slate-500">{formatCurrency(deal.fiveDayPrice)}/wk</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {/* ===== TOP 10 BY VALUE WITH STAGE ===== */}
+            <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-slate-400">🏆</span>
+                <h2 className="text-lg font-semibold text-white">Top 10 Deals by Annual Value</h2>
               </div>
-
-              {/* Top 10 by Weekly Revenue */}
-              <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-slate-400">⏱</span>
-                  <h2 className="text-lg font-semibold text-white">Top 10 by Weekly Revenue</h2>
-                </div>
-                <div className="space-y-2">
-                  {(activeFilter === 'All' ? data?.topByWeekly : topByWeekly)?.slice(0, 10).map((deal, i) => (
-                    <div key={`top-weekly-${deal.id || i}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700/30">
+              <div className="grid grid-cols-12 gap-2 p-3 bg-slate-700/30 rounded-lg text-xs text-slate-400 uppercase tracking-wider font-medium mb-3">
+                <div className="col-span-1">#</div>
+                <div className="col-span-5">Deal</div>
+                <div className="col-span-2 text-right">Amount</div>
+                <div className="col-span-2 text-center">Stage</div>
+                <div className="col-span-2 text-center">Owner</div>
+              </div>
+              <div className="space-y-1">
+                {(activeFilter === 'All' ? data?.topDeals : topDeals)?.slice(0, 10).map((deal, i) => (
+                  <div key={`top-${deal.id || i}`} className="grid grid-cols-12 gap-2 p-3 rounded-lg hover:bg-slate-700/30 items-center">
+                    <div className="col-span-1">
                       <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white">{i + 1}</div>
-                      <div className="flex-1 min-w-0"><div className="text-sm text-white truncate">{deal.name}</div></div>
-                      <div className="text-sm font-semibold text-amber-400">{formatCurrency(deal.fiveDayPrice)}/wk</div>
-                      <div className="px-2 py-0.5 rounded text-xs font-medium"
-                        style={{ backgroundColor: `${TEAM_COLORS[deal.team] || THEME.gray}30`, color: TEAM_COLORS[deal.team] || THEME.gray }}>
-                        {deal.owner?.split(' ')[1] || deal.owner?.split(' ')[0]}
-                      </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="col-span-5 text-sm text-white truncate">{deal.name}</div>
+                    <div className="col-span-2 text-right text-sm font-semibold text-teal-400">{formatCurrency(deal.amount)}</div>
+                    <div className="col-span-2 text-center">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium"
+                        style={{ backgroundColor: `${STAGE_COLORS[deal.stage] || THEME.gray}30`, color: STAGE_COLORS[deal.stage] || THEME.gray }}>
+                        {deal.stage || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <span className="px-2 py-0.5 rounded text-xs font-medium"
+                        style={{ backgroundColor: `${TEAM_COLORS[deal.team] || THEME.gray}30`, color: TEAM_COLORS[deal.team] || THEME.gray }}>
+                        {deal.owner?.split(' ')[1] || deal.owner?.split(' ')[0] || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -763,17 +787,26 @@ export default function Dashboard() {
               <div className="bg-red-500/5 rounded-xl p-5 border border-red-500/30 mb-6">
                 <div className="flex items-center gap-3 mb-4">
                   <span className="text-red-400">⚠</span>
-                  <h2 className="text-lg font-semibold text-white">At Risk (No Date)</h2>
+                  <h2 className="text-lg font-semibold text-white">At Risk — No Close Date Set</h2>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-xs text-slate-400 uppercase tracking-wider p-2 border-b border-slate-700/50">
-                  <div>Deal</div><div className="text-right">Annual</div><div className="text-right">5-Day</div>
+                <div className="grid grid-cols-12 gap-2 text-xs text-slate-400 uppercase tracking-wider p-2 border-b border-slate-700/50">
+                  <div className="col-span-5">Deal</div>
+                  <div className="col-span-2 text-right">Annual</div>
+                  <div className="col-span-3 text-center">Stage</div>
+                  <div className="col-span-2 text-center">Owner</div>
                 </div>
                 {noDateDeals.slice(0, 8).map((deal, i) => (
-                  <div key={`no-date-${deal.id || i}`} className="grid grid-cols-3 gap-2 p-2 border-b border-slate-700/30 items-center">
-                    <div className="text-sm text-white truncate">{deal.name}</div>
-                    <div className="text-right text-sm font-semibold text-red-400">{formatCurrency(deal.amount)}</div>
-                    <div className="text-right">
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-red-500/20 text-red-300">{formatCurrency(deal.fiveDayPrice)}/wk</span>
+                  <div key={`no-date-${deal.id || i}`} className="grid grid-cols-12 gap-2 p-2 border-b border-slate-700/30 items-center">
+                    <div className="col-span-5 text-sm text-white truncate">{deal.name}</div>
+                    <div className="col-span-2 text-right text-sm font-semibold text-red-400">{formatCurrency(deal.amount)}</div>
+                    <div className="col-span-3 text-center">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium"
+                        style={{ backgroundColor: `${STAGE_COLORS[deal.stage] || THEME.gray}30`, color: STAGE_COLORS[deal.stage] || THEME.gray }}>
+                        {deal.stage || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="col-span-2 text-center text-xs text-slate-400">
+                      {deal.owner?.split(' ')[1] || deal.owner?.split(' ')[0] || 'N/A'}
                     </div>
                   </div>
                 ))}
@@ -784,18 +817,9 @@ export default function Dashboard() {
             <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-slate-400">👥</span>
-                <h2 className="text-lg font-semibold text-white">Pipeline by Deal Owner — Performance & Weekly Revenue</h2>
+                <h2 className="text-lg font-semibold text-white">Pipeline by Deal Owner</h2>
               </div>
               <div className="text-xs text-slate-500 mb-4">Click a row to expand and see all deals</div>
-
-              <div className="grid grid-cols-12 gap-2 p-3 bg-slate-700/30 rounded-lg text-xs text-slate-400 uppercase tracking-wider font-medium mb-3">
-                <div className="col-span-3">Sales Rep</div>
-                <div className="col-span-2 text-right">Pipeline</div>
-                <div className="col-span-2 text-right">Weekly (5-Day)</div>
-                <div className="col-span-1 text-center">Deals</div>
-                <div className="col-span-2 text-right">Avg Deal</div>
-                <div className="col-span-2 text-right">Share</div>
-              </div>
 
               {pipelineByOwner.map((owner, idx) => {
                 const expanded = expandedOwners[owner.owner];
@@ -826,10 +850,6 @@ export default function Dashboard() {
                           <div className="text-xs text-slate-400 uppercase">Pipeline</div>
                           <div className="font-bold text-white">{formatCurrency(owner.totalPipeline)}</div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-xs text-slate-400 uppercase">5-Day</div>
-                          <div className="font-semibold text-slate-300">{formatCurrency(owner.weeklyRevenue)}</div>
-                        </div>
                         <div className="text-right min-w-[60px]">
                           <div className="text-xs text-slate-400 uppercase">Share</div>
                           <div className="font-semibold text-slate-300">{share}%</div>
@@ -848,9 +868,8 @@ export default function Dashboard() {
                         <div className="grid grid-cols-12 gap-2 p-3 bg-slate-700/30 text-xs text-slate-400 uppercase tracking-wider font-medium">
                           <div className="col-span-4">Deal</div>
                           <div className="col-span-2 text-right">Annual</div>
-                          <div className="col-span-2 text-right">5-Day</div>
-                          <div className="col-span-2 text-center">Stage</div>
-                          <div className="col-span-2 text-center">Close Date</div>
+                          <div className="col-span-3 text-center">Stage</div>
+                          <div className="col-span-3 text-center">Close Date</div>
                         </div>
                         {owner.dealList.sort((a, b) => b.amount - a.amount).map((deal, di) => {
                           const noDate = !deal.closeDate;
@@ -860,13 +879,13 @@ export default function Dashboard() {
                                 {deal.name}{noDate && <span className="text-red-400">⚠</span>}
                               </div>
                               <div className="col-span-2 text-right text-sm font-medium text-white">{formatCurrency(deal.amount)}</div>
-                              <div className="col-span-2 text-right text-sm text-slate-400">{formatCurrency(deal.fiveDayPrice)}/wk</div>
-                              <div className="col-span-2 text-center">
-                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-600/50 text-slate-300">
-                                  {getStageName(deal.stageId) || deal.stage?.substring(0, 12) || 'N/A'}
+                              <div className="col-span-3 text-center">
+                                <span className="px-2 py-1 rounded-full text-xs font-medium"
+                                  style={{ backgroundColor: `${STAGE_COLORS[deal.stage] || THEME.gray}30`, color: STAGE_COLORS[deal.stage] || THEME.gray }}>
+                                  {deal.stage || getStageName(deal.stageId) || 'N/A'}
                                 </span>
                               </div>
-                              <div className={`col-span-2 text-center text-sm ${deal.closeDate ? 'text-slate-400' : 'text-red-400 font-medium'}`}>
+                              <div className={`col-span-3 text-center text-sm ${deal.closeDate ? 'text-slate-400' : 'text-red-400 font-medium'}`}>
                                 {deal.closeDate ? formatDate(deal.closeDate).replace(', 2026', '').replace(', 2025', '') : 'TBD'}
                               </div>
                             </div>
@@ -875,7 +894,6 @@ export default function Dashboard() {
                         <div className="p-3 bg-slate-700/50 flex justify-end gap-6 text-sm">
                           <span className="text-slate-400">Total:</span>
                           <span className="font-bold text-white">{formatCurrency(owner.totalPipeline)}</span>
-                          <span className="text-slate-400">{formatCurrency(owner.weeklyRevenue)}/wk</span>
                         </div>
                       </div>
                     )}
