@@ -92,30 +92,12 @@ const PIPELINE_FIRST_STAGE = {
 
 // Flattened stage names for easy lookup
 const STAGE_NAMES = {
-  // SAM Pipeline stages
-  '1270511187': 'Qualification',
-  '1270511188': 'Plant Surveyed',
-  '1270511189': 'Quotes Provided',
-  '1270511190': 'Decision Making',
-  '1270511191': 'Contract Sent',
-  '1270511192': 'Closed Won',
-  '1270511193': 'Closed Lost',
-  // Vincit Enterprise stages
-  '1276813984': 'Qualification',
-  '1276813985': 'Plant Surveyed',
-  '1276813986': 'Quotes Provided',
-  '1276813987': 'Decision Making',
-  '1276813988': 'Contract Sent',
-  '1276813989': 'Closed Won',
-  '1276813990': 'Closed Lost',
-  // QSI BDM stages
-  '1276776727': 'Qualification',
-  '1276776728': 'Plant Surveyed',
-  '1276776729': 'Quotes Provided',
-  '1276776730': 'Decision Making',
-  '1276776731': 'Contract Sent',
-  '1276776732': 'Closed Won',
-  '1276776733': 'Closed Lost',
+  '1270511187': 'Qualification', '1270511188': 'Plant Surveyed', '1270511189': 'Quotes Provided',
+  '1270511190': 'Decision Making', '1270511191': 'Contract Sent', '1270511192': 'Closed Won', '1270511193': 'Closed Lost',
+  '1276813984': 'Qualification', '1276813985': 'Plant Surveyed', '1276813986': 'Quotes Provided',
+  '1276813987': 'Decision Making', '1276813988': 'Contract Sent', '1276813989': 'Closed Won', '1276813990': 'Closed Lost',
+  '1276776727': 'Qualification', '1276776728': 'Plant Surveyed', '1276776729': 'Quotes Provided',
+  '1276776730': 'Decision Making', '1276776731': 'Contract Sent', '1276776732': 'Closed Won', '1276776733': 'Closed Lost',
 };
 
 // Closed stage IDs
@@ -135,11 +117,7 @@ const STAGE_COLORS = {
 const THEME = { teal: '#0891b2', gray: '#64748b' };
 const COLORS = ['#0891b2', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#ec4899', '#3b82f6', '#64748b'];
 const TEAM_COLORS = {
-  'SAM Pipeline': '#0891b2',
-  'SAM': '#0891b2',
-  'QSI BDM': '#3b82f6',
-  'Vincit Enterprise': '#a855f7',
-  'Other': '#64748b',
+  'SAM Pipeline': '#0891b2', 'SAM': '#0891b2', 'QSI BDM': '#3b82f6', 'Vincit Enterprise': '#a855f7', 'Other': '#64748b',
 };
 
 // ===== FORMATTERS =====
@@ -149,12 +127,10 @@ const formatCurrency = (val) => {
   if (val >= 1e3) return `$${(val / 1e3).toFixed(0)}K`;
   return `$${val.toLocaleString()}`;
 };
-
 const formatDate = (val) => {
   if (!val) return 'TBD';
   return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
-
 const getStageName = (stageId) => STAGE_NAMES[stageId] || stageId;
 const getPipelineName = (pipelineId) => PIPELINE_NAMES[pipelineId] || pipelineId;
 
@@ -209,16 +185,12 @@ const DEAL_OWNERS = [
   { id: '87077445', name: 'Tim Bryant' },
 ];
 
-// Owner ID to Name mapping
 const OWNER_NAMES = Object.fromEntries(DEAL_OWNERS.map(o => [o.id, o.name]));
 const getOwnerName = (ownerId) => OWNER_NAMES[ownerId] || 'Unassigned';
-
 const DEAL_TYPES = [
   { value: 'newbusiness', label: 'New Business' },
   { value: 'existingbusiness', label: 'Existing Business' },
 ];
-
-// ===== HUBSPOT LOGIN URL =====
 const HUBSPOT_URL = 'https://app.hubspot.com/contacts/48aborz70/deals/board/view/all/';
 
 // ===== NEW DEAL FORM COMPONENT =====
@@ -242,18 +214,15 @@ function NewDealForm() {
     return parts.join(' / ');
   }, [form.parentAccount, form.city, form.state, form.vincitMember, form.application]);
 
-  // Get stage options for current pipeline
   const currentStageOptions = useMemo(() => {
     return STAGE_OPTIONS[form.pipeline] || STAGE_OPTIONS['852403303'];
   }, [form.pipeline]);
 
-  // Validation: all 5 required fields + owner
   const isValid = form.parentAccount && form.city && form.state && form.vincitMember && form.application && form.ownerId;
 
   const handleChange = (field, value) => {
     setForm(prev => {
       const newForm = { ...prev, [field]: value };
-      // When pipeline changes, reset stage to first stage of new pipeline
       if (field === 'pipeline') {
         newForm.dealstage = PIPELINE_FIRST_STAGE[value] || PIPELINE_FIRST_STAGE['852403303'];
       }
@@ -291,7 +260,7 @@ function NewDealForm() {
       });
       const data = await res.json();
       if (data.success) {
-        setResult({ type: 'success', message: `Deal created: \"${data.dealname}\" (ID: ${data.dealId})` });
+        setResult({ type: 'success', message: `Deal created: "${data.dealname}" (ID: ${data.dealId})` });
         setForm({
           parentAccount: '', city: '', state: '', vincitMember: '', application: '',
           pipeline: '852403303', dealstage: '1270511187', dealType: 'newbusiness', ownerId: '',
@@ -354,7 +323,7 @@ function NewDealForm() {
         </div>
       </div>
 
-      {/* Vincit Member Company + Application */}
+      {/* Service Details */}
       <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50 mb-6">
         <h3 className="text-lg font-semibold text-white mb-4">Service Details</h3>
         <div className="grid grid-cols-1 gap-4">
@@ -455,49 +424,29 @@ export default function Dashboard() {
     try {
       const res = await fetch('/api/deals');
       const json = await res.json();
-      if (json.success) {
-        setData(json);
-        setError(null);
-      } else {
-        setError(json.error || 'Failed to fetch data');
-      }
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+      if (json.success) { setData(json); setError(null); }
+      else { setError(json.error || 'Failed to fetch data'); }
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  // Filtered data based on pipeline filter
   const filtered = useMemo(() => {
     if (!data) return null;
     if (activeFilter === 'All') return data;
-
     const owners = data.pipelineByOwner.filter(o => o.team === activeFilter);
     const deals = data.allDeals.filter(d => d.team === activeFilter);
     const totalPipeline = deals.reduce((s, d) => s + d.amount, 0);
-
     return {
-      ...data,
-      pipelineByOwner: owners,
-      allDeals: deals,
-      summary: {
-        ...data.summary,
-        totalPipeline,
-        activeDeals: deals.length,
-        avgDealSize: deals.length > 0 ? totalPipeline / deals.length : 0,
-      },
+      ...data, pipelineByOwner: owners, allDeals: deals,
+      summary: { ...data.summary, totalPipeline, activeDeals: deals.length, avgDealSize: deals.length > 0 ? totalPipeline / deals.length : 0 },
       topDeals: data.topDeals.filter(d => d.team === activeFilter),
     };
   }, [data, activeFilter]);
 
-  const toggleOwner = (owner) => {
-    setExpandedOwners(prev => ({ ...prev, [owner]: !prev[owner] }));
-  };
+  const toggleOwner = (owner) => { setExpandedOwners(prev => ({ ...prev, [owner]: !prev[owner] })); };
 
-  // Pipeline filter counts
   const filterCounts = useMemo(() => {
     if (!data) return {};
     return {
@@ -508,7 +457,6 @@ export default function Dashboard() {
     };
   }, [data]);
 
-  // Loading state
   if (loading && !data) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
@@ -520,12 +468,11 @@ export default function Dashboard() {
     );
   }
 
-  // Error state
   if (error && !data) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
         <div className="text-center bg-red-500/10 border border-red-500/50 rounded-xl p-8 max-w-md">
-          <div className="text-4xl mb-4">\u26A0\uFE0F</div>
+          <div className="text-4xl mb-4">{'\u26A0\uFE0F'}</div>
           <div className="text-white text-xl mb-2">Error Loading Data</div>
           <div className="text-slate-400 mb-4">{error}</div>
           <button onClick={fetchData} className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition">Retry</button>
@@ -542,40 +489,21 @@ export default function Dashboard() {
   const topDeals = filtered?.topDeals || [];
   const noDateDeals = data?.noDateDeals || [];
 
-  // Chart data
   const barChartData = pipelineByOwner.slice(0, 8).map(o => ({
-    name: o.owner.split(' ')[1] || o.owner.split(' ')[0],
-    pipeline: o.totalPipeline / 1e6,
-    fullName: o.owner,
+    name: o.owner.split(' ')[1] || o.owner.split(' ')[0], pipeline: o.totalPipeline / 1e6, fullName: o.owner,
   }));
-
-  const pieData = pipelineByGroup.map((g, i) => ({
-    name: g.group,
-    value: g.totalPipeline,
-    color: COLORS[i % COLORS.length],
+  const pieData = pipelineByGroup.map((g, i) => ({ name: g.group, value: g.totalPipeline, color: COLORS[i % COLORS.length] }));
+  const lineData = pipelineByCloseDate.filter(d => d.month !== 'No Date').map(d => ({
+    month: d.month.replace(' 2026', '').replace(' 2025', ''), pipeline: d.pipeline / 1e6, deals: d.deals,
   }));
-
-  const lineData = pipelineByCloseDate
-    .filter(d => d.month !== 'No Date')
-    .map(d => ({
-      month: d.month.replace(' 2026', '').replace(' 2025', ''),
-      pipeline: d.pipeline / 1e6,
-      deals: d.deals,
-    }));
-
-  // Stage chart data
   const stageBarData = pipelineByStage.map(s => ({
-    name: s.stage.replace(' ', '\n'),
-    shortName: s.stage.split(' ')[0],
-    pipeline: s.totalPipeline / 1e6,
-    deals: s.deals,
-    fullName: s.stage,
-    color: STAGE_COLORS[s.stage] || THEME.gray,
+    name: s.stage.replace(' ', '\n'), shortName: s.stage.split(' ')[0], pipeline: s.totalPipeline / 1e6,
+    deals: s.deals, fullName: s.stage, color: STAGE_COLORS[s.stage] || THEME.gray,
   }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-      {/* ===== HEADER ===== */}
+      {/* HEADER */}
       <header className="bg-slate-900/80 backdrop-blur border-b border-slate-700/50 sticky top-0 z-50">
         <div className="max-w-[1600px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -583,7 +511,7 @@ export default function Dashboard() {
               <div className="bg-teal-500 text-white px-3 py-1.5 rounded-lg font-bold text-lg tracking-wider">V</div>
               <div>
                 <div className="text-teal-400 text-sm font-medium tracking-wider">VINCIT GROUP</div>
-                <div className="text-slate-400 text-xs">Chemical \u2022 Sanitation \u2022 Engineering</div>
+                <div className="text-slate-400 text-xs">Chemical {'\u2022'} Sanitation {'\u2022'} Engineering</div>
               </div>
             </div>
             <div className="text-right">
@@ -593,8 +521,7 @@ export default function Dashboard() {
                   <>
                     <span>{new Date(data.lastUpdated).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                     <span className="flex items-center gap-1 text-green-400">
-                      <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                      HubSpot Live Data
+                      <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />HubSpot Live Data
                     </span>
                   </>
                 )}
@@ -602,56 +529,40 @@ export default function Dashboard() {
             </div>
             <button onClick={fetchData} disabled={loading}
               className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm transition disabled:opacity-50">
-              <span className={loading ? 'animate-spin' : ''}>\u21BB</span> Refresh
+              <span className={loading ? 'animate-spin' : ''}>{'\u21BB'}</span> Refresh
             </button>
           </div>
         </div>
       </header>
 
-      {/* ===== TAB BAR + PIPELINE FILTERS ===== */}
+      {/* TAB BAR + PIPELINE FILTERS */}
       <div className="bg-slate-900/50 border-b border-slate-700/50">
         <div className="max-w-[1600px] mx-auto px-6 py-3">
           <div className="flex items-center gap-3">
-            {/* Tab Switcher */}
             <div className="flex gap-1 bg-slate-800/80 rounded-xl p-1 border border-slate-700/50 mr-4">
-              {[
-                { key: 'pipeline', label: '\uD83D\uDCCA Pipeline' },
-                { key: 'newdeal', label: '\u2795 New Deal' },
-              ].map(tab => (
+              {[{ key: 'pipeline', label: '\uD83D\uDCCA Pipeline' }, { key: 'newdeal', label: '\u2795 New Deal' }].map(tab => (
                 <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                   className={`py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
-                    activeTab === tab.key
-                      ? 'bg-teal-500 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                  }`}>
-                  {tab.label}
-                </button>
+                    activeTab === tab.key ? 'bg-teal-500 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                  }`}>{tab.label}</button>
               ))}
             </div>
-
-            {/* Pipeline Filters (only show on pipeline tab) */}
             {activeTab === 'pipeline' && (
               <>
                 {['All', 'SAM Pipeline', 'QSI BDM', 'Vincit Enterprise'].map(f => (
                   <button key={f} onClick={() => setActiveFilter(f)}
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
-                      activeFilter === f
-                        ? 'bg-white text-slate-900'
-                        : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
+                      activeFilter === f ? 'bg-white text-slate-900' : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
                     }`}>
                     {f}
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      activeFilter === f ? 'bg-slate-200 text-slate-700' : 'bg-slate-600 text-slate-300'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${activeFilter === f ? 'bg-slate-200 text-slate-700' : 'bg-slate-600 text-slate-300'}`}>
                       {filterCounts[f] || 0}
                     </span>
                   </button>
                 ))}
-
-                {/* View in HubSpot button */}
                 <a href={HUBSPOT_URL} target="_blank" rel="noopener noreferrer"
                   className="ml-auto flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 border border-orange-500/30 transition-all">
-                  \uD83D\uDD17 View Deals in HubSpot
+                  {'\uD83D\uDD17'} View Deals in HubSpot
                 </a>
               </>
             )}
@@ -659,15 +570,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ===== MAIN CONTENT ===== */}
+      {/* MAIN CONTENT */}
       <main className="max-w-[1600px] mx-auto px-6 py-6">
-
-        {/* ===== NEW DEAL TAB ===== */}
         {activeTab === 'newdeal' ? (
           <NewDealForm />
         ) : (
           <>
-            {/* ===== KPI CARDS ===== */}
+            {/* KPI CARDS */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-2">
@@ -677,28 +586,25 @@ export default function Dashboard() {
                 <div className="text-3xl font-bold text-teal-400">{formatCurrency(summary.totalPipeline)}</div>
                 <div className="text-sm text-slate-400">Annual contract value</div>
               </div>
-
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-green-500/20"><span className="text-green-400 text-lg">\u25CF</span></div>
+                  <div className="p-2 rounded-lg bg-green-500/20"><span className="text-green-400 text-lg">{'\u25CF'}</span></div>
                   <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Active Deals</span>
                 </div>
                 <div className="text-3xl font-bold text-green-400">{summary.activeDeals || 0}</div>
                 <div className="text-sm text-slate-400">In pipeline currently</div>
               </div>
-
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-purple-500/20"><span className="text-purple-400 text-lg">\u2197</span></div>
+                  <div className="p-2 rounded-lg bg-purple-500/20"><span className="text-purple-400 text-lg">{'\u2197'}</span></div>
                   <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Avg Deal Size</span>
                 </div>
                 <div className="text-3xl font-bold text-purple-400">{formatCurrency(summary.avgDealSize)}</div>
                 <div className="text-sm text-slate-400">Per opportunity</div>
               </div>
-
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-amber-500/20"><span className="text-amber-400 text-lg">\u26A0</span></div>
+                  <div className="p-2 rounded-lg bg-amber-500/20"><span className="text-amber-400 text-lg">{'\u26A0'}</span></div>
                   <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">No Close Date</span>
                 </div>
                 <div className="text-3xl font-bold text-amber-400">{summary.dealsNoCloseDate || 0}</div>
@@ -706,14 +612,14 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* ===== AT RISK BANNER ===== */}
+            {/* AT RISK BANNER */}
             {activeFilter === 'All' && summary.atRiskCount > 0 && (
               <div className="mb-6 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-xl p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-orange-500/20 rounded-lg"><span className="text-orange-400 text-2xl">\u26A0</span></div>
+                  <div className="p-3 bg-orange-500/20 rounded-lg"><span className="text-orange-400 text-2xl">{'\u26A0'}</span></div>
                   <div>
                     <div className="text-orange-300 font-semibold">High-Value Deals Requiring Immediate Attention</div>
-                    <div className="text-slate-400 text-sm">{summary.atRiskCount} deals with no recent logged activity may be at risk of stalling. Recommend immediate outreach within 48 hours.</div>
+                    <div className="text-slate-400 text-sm">{summary.atRiskCount} deals with no recent logged activity may be at risk of stalling.</div>
                   </div>
                 </div>
                 <div className="text-right">
@@ -723,12 +629,11 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* ===== CHARTS ROW ===== */}
+            {/* CHARTS ROW */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              {/* Pipeline by Deal Owner */}
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="text-slate-400">\uD83D\uDC65</span>
+                  <span className="text-slate-400">{'\uD83D\uDC65'}</span>
                   <h2 className="text-lg font-semibold text-white">Pipeline by Deal Owner</h2>
                 </div>
                 <div className="text-xs text-slate-500 mb-3">Top performers by total pipeline value</div>
@@ -736,21 +641,15 @@ export default function Dashboard() {
                   <BarChart data={barChartData}>
                     <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}M`} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: 8 }}
-                      labelStyle={{ color: '#fff' }}
-                      formatter={v => [`$${v.toFixed(1)}M`, 'Pipeline']}
-                      labelFormatter={(label, payload) => payload[0]?.payload?.fullName || label}
-                    />
+                    <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: 8 }} labelStyle={{ color: '#fff' }}
+                      formatter={v => [`$${v.toFixed(1)}M`, 'Pipeline']} labelFormatter={(label, payload) => payload[0]?.payload?.fullName || label} />
                     <Bar dataKey="pipeline" fill={THEME.teal} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-
-              {/* Pipeline by Business Group */}
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="text-slate-400">\u25CE</span>
+                  <span className="text-slate-400">{'\u25CE'}</span>
                   <h2 className="text-lg font-semibold text-white">Pipeline by Business Group</h2>
                 </div>
                 <div className="text-xs text-slate-500 mb-3">Revenue distribution across divisions</div>
@@ -775,36 +674,30 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* ===== PIPELINE BY STAGE ===== */}
+            {/* PIPELINE BY STAGE */}
             <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-slate-400">\uD83D\uDCCA</span>
+                <span className="text-slate-400">{'\uD83D\uDCCA'}</span>
                 <h2 className="text-lg font-semibold text-white">Pipeline by Deal Stage</h2>
               </div>
-              <div className="text-xs text-slate-500 mb-3">Value distribution across sales stages</div>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={stageBarData} layout="vertical">
                   <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}M`} />
                   <YAxis type="category" dataKey="shortName" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: 8 }}
-                    labelStyle={{ color: '#fff' }}
+                  <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: 8 }} labelStyle={{ color: '#fff' }}
                     formatter={(v, name, props) => [`$${v.toFixed(1)}M (${props.payload.deals} deals)`, 'Pipeline']}
-                    labelFormatter={(label, payload) => payload[0]?.payload?.fullName || label}
-                  />
+                    labelFormatter={(label, payload) => payload[0]?.payload?.fullName || label} />
                   <Bar dataKey="pipeline" radius={[0, 4, 4, 0]}>
-                    {stageBarData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
+                    {stageBarData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
-            {/* ===== CLOSE DATE CHART ===== */}
+            {/* CLOSE DATE CHART */}
             <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-slate-400">\uD83D\uDCC5</span>
+                <span className="text-slate-400">{'\uD83D\uDCC5'}</span>
                 <h2 className="text-lg font-semibold text-white">Pipeline by Expected Close Date (2026)</h2>
               </div>
               <ResponsiveContainer width="100%" height={200}>
@@ -816,4 +709,145 @@ export default function Dashboard() {
                 </LineChart>
               </ResponsiveContainer>
               {summary.dealsNoCloseDate > 0 && (
-                <div className="mt-3 bg-orange-500/10 border border-orange-500/30 rounded-lg px-4 py-2 text-sm text-
+                <div className="mt-3 bg-orange-500/10 border border-orange-500/30 rounded-lg px-4 py-2 text-sm text-orange-300">
+                  {'\u26A0'} {summary.dealsNoCloseDate} deals ({formatCurrency(summary.noCloseDateValue)}) have no expected close date set
+                </div>
+              )}
+            </div>
+
+            {/* TOP DEALS TABLE */}
+            <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-slate-400">{'\uD83C\uDFC6'}</span>
+                <h2 className="text-lg font-semibold text-white">Top 10 Highest-Value Deals</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-700">
+                      <th className="text-left py-3 px-3 text-slate-400 font-medium">#</th>
+                      <th className="text-left py-3 px-3 text-slate-400 font-medium">Deal</th>
+                      <th className="text-right py-3 px-3 text-slate-400 font-medium">Amount</th>
+                      <th className="text-left py-3 px-3 text-slate-400 font-medium">Stage</th>
+                      <th className="text-left py-3 px-3 text-slate-400 font-medium">Owner</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topDeals.slice(0, 10).map((deal, i) => (
+                      <tr key={deal.id || i} className="border-b border-slate-700/50 hover:bg-slate-700/20">
+                        <td className="py-3 px-3 text-slate-500">{i + 1}</td>
+                        <td className="py-3 px-3 text-white font-medium">{deal.name}</td>
+                        <td className="py-3 px-3 text-right text-teal-400 font-semibold">{formatCurrency(deal.amount)}</td>
+                        <td className="py-3 px-3">
+                          <span className="px-2 py-1 rounded-full text-xs font-medium" style={{
+                            backgroundColor: (STAGE_COLORS[deal.stage] || THEME.gray) + '20',
+                            color: STAGE_COLORS[deal.stage] || THEME.gray
+                          }}>{deal.stage}</span>
+                        </td>
+                        <td className="py-3 px-3 text-slate-300">{deal.owner}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* OWNER CARDS */}
+            <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-slate-400">{'\uD83D\uDC65'}</span>
+                <h2 className="text-lg font-semibold text-white">Pipeline by Deal Owner</h2>
+              </div>
+              {pipelineByOwner.map((owner, idx) => (
+                <div key={owner.owner} className="mb-2">
+                  <button onClick={() => toggleOwner(owner.owner)}
+                    className="w-full flex items-center justify-between p-4 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg transition">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                        style={{ backgroundColor: TEAM_COLORS[owner.team] || THEME.gray }}>
+                        {owner.owner.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div className="text-left">
+                        <div className="text-white font-medium">{owner.owner}</div>
+                        <div className="text-slate-400 text-xs">{owner.team} {'\u2022'} {owner.deals} deals</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-teal-400 font-bold">{formatCurrency(owner.totalPipeline)}</div>
+                      <span className="text-slate-400">{expandedOwners[owner.owner] ? '\u25B2' : '\u25BC'}</span>
+                    </div>
+                  </button>
+                  {expandedOwners[owner.owner] && owner.dealList && (
+                    <div className="ml-4 mt-1 border-l-2 border-slate-600 pl-4">
+                      {owner.dealList.sort((a, b) => b.amount - a.amount).map((deal, i) => (
+                        <div key={deal.id || i} className="flex items-center justify-between py-2 border-b border-slate-700/30 text-sm">
+                          <div className="flex-1 text-white truncate mr-4">{deal.name}</div>
+                          <div className="flex items-center gap-3">
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{
+                              backgroundColor: (STAGE_COLORS[deal.stage] || THEME.gray) + '20',
+                              color: STAGE_COLORS[deal.stage] || THEME.gray
+                            }}>{deal.stage}</span>
+                            <div className="text-teal-400 font-semibold w-20 text-right">{formatCurrency(deal.amount)}</div>
+                            <div className={`text-xs w-24 text-right ${deal.closeDate ? 'text-slate-400' : 'text-red-400 font-medium'}`}>
+                              {deal.closeDate ? formatDate(deal.closeDate).replace(', 2026', '').replace(', 2025', '') : 'TBD'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="p-3 bg-slate-700/50 flex justify-end gap-6 text-sm">
+                        <span className="text-slate-400">Total:</span>
+                        <span className="font-bold text-white">{formatCurrency(owner.totalPipeline)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* NO CLOSE DATE DEALS */}
+            {noDateDeals.length > 0 && (
+              <div className="bg-slate-800/50 rounded-xl p-5 border border-orange-500/30 mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-orange-400">{'\u26A0'}</span>
+                  <h2 className="text-lg font-semibold text-orange-300">Deals Without Close Date</h2>
+                  <span className="text-xs text-slate-400">Top {noDateDeals.length} by value</span>
+                </div>
+                <div className="space-y-2">
+                  {noDateDeals.map((deal, i) => (
+                    <div key={deal.id || i} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg text-sm">
+                      <div className="text-white font-medium truncate flex-1 mr-4">{deal.name}</div>
+                      <div className="flex items-center gap-3">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{
+                          backgroundColor: (STAGE_COLORS[deal.stage] || THEME.gray) + '20',
+                          color: STAGE_COLORS[deal.stage] || THEME.gray
+                        }}>{deal.stage}</span>
+                        <div className="text-teal-400 font-semibold">{formatCurrency(deal.amount)}</div>
+                        <div className="text-slate-400 text-xs">{deal.owner}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* FOOTER */}
+            <footer className="bg-slate-900/50 rounded-xl p-8 text-center border border-slate-700/50">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <div className="bg-teal-500 text-white px-3 py-1 rounded-lg font-bold text-xl">V</div>
+                <span className="text-teal-400 text-xl font-semibold tracking-wider">VINCIT GROUP</span>
+              </div>
+              <div className="text-slate-400 italic mb-4">&quot;To Conquer&quot; — Reaching Full Potential Together</div>
+              <div className="text-slate-500 text-sm">
+                Data sourced from HubSpot CRM {'\u2022'} Report generated {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </div>
+              <div className="text-slate-600 text-xs mt-1">Seven Brands {'\u2022'} One Vision {'\u2022'} Chemical, Sanitation & Engineering Excellence</div>
+              <div className="mt-4 pt-4 border-t border-slate-700/50 text-slate-500 text-xs uppercase tracking-wider">
+                Confidential — Executive Use Only
+              </div>
+            </footer>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
