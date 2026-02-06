@@ -191,7 +191,7 @@ const DEAL_TYPES = [
   { value: 'newbusiness', label: 'New Business' },
   { value: 'existingbusiness', label: 'Existing Business' },
 ];
-const HUBSPOT_URL = 'https://app.hubspot.com/contacts/48aborz70/deals/board/view/all/';
+const HUBSPOT_URL = 'https://app.hubspot.com/contacts/50640377/deals/board/view/all/';
 
 // ===== NEW DEAL FORM COMPONENT =====
 function NewDealForm() {
@@ -538,7 +538,7 @@ export default function Dashboard() {
       {/* TAB BAR + PIPELINE FILTERS */}
       <div className="bg-slate-900/50 border-b border-slate-700/50">
         <div className="max-w-[1600px] mx-auto px-6 py-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex gap-1 bg-slate-800/80 rounded-xl p-1 border border-slate-700/50 mr-4">
               {[{ key: 'pipeline', label: '\uD83D\uDCCA Pipeline' }, { key: 'newdeal', label: '\u2795 New Deal' }].map(tab => (
                 <button key={tab.key} onClick={() => setActiveTab(tab.key)}
