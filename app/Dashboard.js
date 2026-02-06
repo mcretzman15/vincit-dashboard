@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 
 // ============================================================
-// HUBSPOT CONFIGURATION - SOURCE OF TRUTH (Updated 2026-02-05)
+// HUBSPOT CONFIGURATION - SOURCE OF TRUTH (Updated 2026-02-06)
 // ============================================================
 
 // Pipeline IDs and Labels (CORRECTED to match HubSpot)
@@ -184,7 +184,7 @@ const VINCIT_MEMBERS = [
   'TCS', 'ITG', 'Other'
 ];
 
-// Deal Owners - CORRECTED from HubSpot (22 active owners, alphabetically sorted)
+// Deal Owners - CORRECTED from HubSpot (removed Matt Cretzman per Brady call 2/6)
 const DEAL_OWNERS = [
   { id: '87132142', name: 'April Englishbey' },
   { id: '87856300', name: 'Ben Bebermeyer' },
@@ -199,7 +199,6 @@ const DEAL_OWNERS = [
   { id: '87173917', name: 'Jeremy Bates' },
   { id: '26684738', name: 'Joachim Koch' },
   { id: '87674892', name: 'Ken Dreyer' },
-  { id: '86370312', name: 'Matt Cretzman' },
   { id: '87420199', name: 'Matt Husman' },
   { id: '87131988', name: 'Phillip Shelton' },
   { id: '87132040', name: 'Rikki Ford' },
@@ -219,27 +218,37 @@ const DEAL_TYPES = [
   { value: 'existingbusiness', label: 'Existing Business' },
 ];
 
+// ===== HUBSPOT LOGIN URL =====
+const HUBSPOT_URL = 'https://app.hubspot.com/contacts/48aborz70/deals/board/view/all/';
+
 // ===== NEW DEAL FORM COMPONENT =====
 function NewDealForm() {
   const [form, setForm] = useState({
-    parentAccount: '', city: '', state: '', vincitMember: '',
+    parentAccount: '', city: '', state: '', vincitMember: '', application: '',
     pipeline: '852403303', dealstage: '1270511187', dealType: 'newbusiness', ownerId: '',
     amount: '', closeDate: '', notes: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
+  // Updated deal name formula: Company / City, State / Servicing Company / Application
   const generatedName = useMemo(() => {
-    if (!form.parentAccount || !form.city || !form.state || !form.vincitMember) return '';
-    return `${form.parentAccount} / ${form.city}, ${form.state} / ${form.vincitMember}`;
-  }, [form.parentAccount, form.city, form.state, form.vincitMember]);
+    const parts = [];
+    if (form.parentAccount) parts.push(form.parentAccount);
+    if (form.city && form.state) parts.push(`${form.city}, ${form.state}`);
+    else if (form.city) parts.push(form.city);
+    if (form.vincitMember) parts.push(form.vincitMember);
+    if (form.application) parts.push(form.application);
+    return parts.join(' / ');
+  }, [form.parentAccount, form.city, form.state, form.vincitMember, form.application]);
 
   // Get stage options for current pipeline
   const currentStageOptions = useMemo(() => {
     return STAGE_OPTIONS[form.pipeline] || STAGE_OPTIONS['852403303'];
   }, [form.pipeline]);
 
-  const isValid = form.parentAccount && form.city && form.state && form.vincitMember && form.ownerId;
+  // Validation: all 5 required fields + owner
+  const isValid = form.parentAccount && form.city && form.state && form.vincitMember && form.application && form.ownerId;
 
   const handleChange = (field, value) => {
     setForm(prev => {
@@ -270,6 +279,7 @@ function NewDealForm() {
       parent_account: form.parentAccount,
       city: form.city,
       state: form.state,
+      application: form.application,
       notes: form.notes || undefined,
     };
 
@@ -281,9 +291,9 @@ function NewDealForm() {
       });
       const data = await res.json();
       if (data.success) {
-        setResult({ type: 'success', message: `Deal created: "${data.dealname}" (ID: ${data.dealId})` });
+        setResult({ type: 'success', message: `Deal created: \"${data.dealname}\" (ID: ${data.dealId})` });
         setForm({
-          parentAccount: '', city: '', state: '', vincitMember: '',
+          parentAccount: '', city: '', state: '', vincitMember: '', application: '',
           pipeline: '852403303', dealstage: '1270511187', dealType: 'newbusiness', ownerId: '',
           amount: '', closeDate: '', notes: '',
         });
@@ -315,7 +325,7 @@ function NewDealForm() {
             ? 'bg-green-500/10 border-green-500 text-green-300'
             : 'bg-red-500/10 border-red-500 text-red-300'
         }`}>
-          {result.type === 'success' ? '✅ ' : '❌ '}{result.message}
+          {result.type === 'success' ? '\u2705 ' : '\u274C '}{result.message}
         </div>
       )}
 
@@ -344,14 +354,25 @@ function NewDealForm() {
         </div>
       </div>
 
-      {/* Vincit Member Company */}
+      {/* Vincit Member Company + Application */}
       <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50 mb-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Vincit Member Company</h3>
-        <label className="block text-sm font-medium text-slate-300 mb-2">Servicing Group <span className="text-red-400">*</span></label>
-        <select value={form.vincitMember} onChange={e => handleChange('vincitMember', e.target.value)} className={selectClass}>
-          <option value="">Select servicing group...</option>
-          {VINCIT_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
+        <h3 className="text-lg font-semibold text-white mb-4">Service Details</h3>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Servicing Company <span className="text-red-400">*</span></label>
+            <select value={form.vincitMember} onChange={e => handleChange('vincitMember', e.target.value)} className={selectClass}>
+              <option value="">Select servicing company...</option>
+              {VINCIT_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Application <span className="text-red-400">*</span></label>
+            <input type="text" value={form.application} onChange={e => handleChange('application', e.target.value)}
+              placeholder="e.g. D7, Water cooling tower, Wastewater, Beef processing"
+              className={inputClass} />
+            <p className="text-xs text-slate-500 mt-1">Type the specific application or service being provided</p>
+          </div>
+        </div>
       </div>
 
       {/* Deal Details */}
@@ -504,7 +525,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
         <div className="text-center bg-red-500/10 border border-red-500/50 rounded-xl p-8 max-w-md">
-          <div className="text-4xl mb-4">⚠️</div>
+          <div className="text-4xl mb-4">\u26A0\uFE0F</div>
           <div className="text-white text-xl mb-2">Error Loading Data</div>
           <div className="text-slate-400 mb-4">{error}</div>
           <button onClick={fetchData} className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition">Retry</button>
@@ -562,7 +583,7 @@ export default function Dashboard() {
               <div className="bg-teal-500 text-white px-3 py-1.5 rounded-lg font-bold text-lg tracking-wider">V</div>
               <div>
                 <div className="text-teal-400 text-sm font-medium tracking-wider">VINCIT GROUP</div>
-                <div className="text-slate-400 text-xs">Chemical • Sanitation • Engineering</div>
+                <div className="text-slate-400 text-xs">Chemical \u2022 Sanitation \u2022 Engineering</div>
               </div>
             </div>
             <div className="text-right">
@@ -581,7 +602,7 @@ export default function Dashboard() {
             </div>
             <button onClick={fetchData} disabled={loading}
               className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm transition disabled:opacity-50">
-              <span className={loading ? 'animate-spin' : ''}>↻</span> Refresh
+              <span className={loading ? 'animate-spin' : ''}>\u21BB</span> Refresh
             </button>
           </div>
         </div>
@@ -594,8 +615,8 @@ export default function Dashboard() {
             {/* Tab Switcher */}
             <div className="flex gap-1 bg-slate-800/80 rounded-xl p-1 border border-slate-700/50 mr-4">
               {[
-                { key: 'pipeline', label: '📊 Pipeline' },
-                { key: 'newdeal', label: '➕ New Deal' },
+                { key: 'pipeline', label: '\uD83D\uDCCA Pipeline' },
+                { key: 'newdeal', label: '\u2795 New Deal' },
               ].map(tab => (
                 <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                   className={`py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
@@ -626,6 +647,12 @@ export default function Dashboard() {
                     </span>
                   </button>
                 ))}
+
+                {/* View in HubSpot button */}
+                <a href={HUBSPOT_URL} target="_blank" rel="noopener noreferrer"
+                  className="ml-auto flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 border border-orange-500/30 transition-all">
+                  \uD83D\uDD17 View Deals in HubSpot
+                </a>
               </>
             )}
           </div>
@@ -653,7 +680,7 @@ export default function Dashboard() {
 
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-green-500/20"><span className="text-green-400 text-lg">●</span></div>
+                  <div className="p-2 rounded-lg bg-green-500/20"><span className="text-green-400 text-lg">\u25CF</span></div>
                   <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Active Deals</span>
                 </div>
                 <div className="text-3xl font-bold text-green-400">{summary.activeDeals || 0}</div>
@@ -662,7 +689,7 @@ export default function Dashboard() {
 
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-purple-500/20"><span className="text-purple-400 text-lg">↗</span></div>
+                  <div className="p-2 rounded-lg bg-purple-500/20"><span className="text-purple-400 text-lg">\u2197</span></div>
                   <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Avg Deal Size</span>
                 </div>
                 <div className="text-3xl font-bold text-purple-400">{formatCurrency(summary.avgDealSize)}</div>
@@ -671,7 +698,7 @@ export default function Dashboard() {
 
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-amber-500/20"><span className="text-amber-400 text-lg">⚠</span></div>
+                  <div className="p-2 rounded-lg bg-amber-500/20"><span className="text-amber-400 text-lg">\u26A0</span></div>
                   <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">No Close Date</span>
                 </div>
                 <div className="text-3xl font-bold text-amber-400">{summary.dealsNoCloseDate || 0}</div>
@@ -683,7 +710,7 @@ export default function Dashboard() {
             {activeFilter === 'All' && summary.atRiskCount > 0 && (
               <div className="mb-6 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-xl p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-orange-500/20 rounded-lg"><span className="text-orange-400 text-2xl">⚠</span></div>
+                  <div className="p-3 bg-orange-500/20 rounded-lg"><span className="text-orange-400 text-2xl">\u26A0</span></div>
                   <div>
                     <div className="text-orange-300 font-semibold">High-Value Deals Requiring Immediate Attention</div>
                     <div className="text-slate-400 text-sm">{summary.atRiskCount} deals with no recent logged activity may be at risk of stalling. Recommend immediate outreach within 48 hours.</div>
@@ -701,7 +728,7 @@ export default function Dashboard() {
               {/* Pipeline by Deal Owner */}
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="text-slate-400">👥</span>
+                  <span className="text-slate-400">\uD83D\uDC65</span>
                   <h2 className="text-lg font-semibold text-white">Pipeline by Deal Owner</h2>
                 </div>
                 <div className="text-xs text-slate-500 mb-3">Top performers by total pipeline value</div>
@@ -723,7 +750,7 @@ export default function Dashboard() {
               {/* Pipeline by Business Group */}
               <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="text-slate-400">◎</span>
+                  <span className="text-slate-400">\u25CE</span>
                   <h2 className="text-lg font-semibold text-white">Pipeline by Business Group</h2>
                 </div>
                 <div className="text-xs text-slate-500 mb-3">Revenue distribution across divisions</div>
@@ -751,7 +778,7 @@ export default function Dashboard() {
             {/* ===== PIPELINE BY STAGE ===== */}
             <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-slate-400">📊</span>
+                <span className="text-slate-400">\uD83D\uDCCA</span>
                 <h2 className="text-lg font-semibold text-white">Pipeline by Deal Stage</h2>
               </div>
               <div className="text-xs text-slate-500 mb-3">Value distribution across sales stages</div>
@@ -777,7 +804,7 @@ export default function Dashboard() {
             {/* ===== CLOSE DATE CHART ===== */}
             <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-slate-400">📅</span>
+                <span className="text-slate-400">\uD83D\uDCC5</span>
                 <h2 className="text-lg font-semibold text-white">Pipeline by Expected Close Date (2026)</h2>
               </div>
               <ResponsiveContainer width="100%" height={200}>
@@ -789,188 +816,4 @@ export default function Dashboard() {
                 </LineChart>
               </ResponsiveContainer>
               {summary.dealsNoCloseDate > 0 && (
-                <div className="mt-3 bg-orange-500/10 border border-orange-500/30 rounded-lg px-4 py-2 text-sm text-orange-300">
-                  ⚠️ {summary.dealsNoCloseDate} deals totaling {formatCurrency(summary.noCloseDateValue)} have no close date set — recommend qualification review
-                </div>
-              )}
-            </div>
-
-            {/* ===== TOP 10 BY VALUE WITH STAGE ===== */}
-            <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-slate-400">🏆</span>
-                <h2 className="text-lg font-semibold text-white">Top 10 Deals by Annual Value</h2>
-              </div>
-              <div className="grid grid-cols-12 gap-2 p-3 bg-slate-700/30 rounded-lg text-xs text-slate-400 uppercase tracking-wider font-medium mb-3">
-                <div className="col-span-1">#</div>
-                <div className="col-span-5">Deal</div>
-                <div className="col-span-2 text-right">Amount</div>
-                <div className="col-span-2 text-center">Stage</div>
-                <div className="col-span-2 text-center">Owner</div>
-              </div>
-              <div className="space-y-1">
-                {(activeFilter === 'All' ? data?.topDeals : topDeals)?.slice(0, 10).map((deal, i) => (
-                  <div key={`top-${deal.id || i}`} className="grid grid-cols-12 gap-2 p-3 rounded-lg hover:bg-slate-700/30 items-center">
-                    <div className="col-span-1">
-                      <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white">{i + 1}</div>
-                    </div>
-                    <div className="col-span-5 text-sm text-white truncate">{deal.name}</div>
-                    <div className="col-span-2 text-right text-sm font-semibold text-teal-400">{formatCurrency(deal.amount)}</div>
-                    <div className="col-span-2 text-center">
-                      <span className="px-2 py-1 rounded-full text-xs font-medium"
-                        style={{ backgroundColor: `${STAGE_COLORS[deal.stage] || THEME.gray}30`, color: STAGE_COLORS[deal.stage] || THEME.gray }}>
-                        {deal.stage || 'N/A'}
-                      </span>
-                    </div>
-                    <div className="col-span-2 text-center">
-                      <span className="px-2 py-0.5 rounded text-xs font-medium"
-                        style={{ backgroundColor: `${TEAM_COLORS[deal.team] || THEME.gray}30`, color: TEAM_COLORS[deal.team] || THEME.gray }}>
-                        {deal.owner?.split(' ')[1] || deal.owner?.split(' ')[0] || 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ===== NO DATE DEALS ===== */}
-            {activeFilter === 'All' && noDateDeals.length > 0 && (
-              <div className="bg-red-500/5 rounded-xl p-5 border border-red-500/30 mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-red-400">⚠</span>
-                  <h2 className="text-lg font-semibold text-white">At Risk — No Close Date Set</h2>
-                </div>
-                <div className="grid grid-cols-12 gap-2 text-xs text-slate-400 uppercase tracking-wider p-2 border-b border-slate-700/50">
-                  <div className="col-span-5">Deal</div>
-                  <div className="col-span-2 text-right">Annual</div>
-                  <div className="col-span-3 text-center">Stage</div>
-                  <div className="col-span-2 text-center">Owner</div>
-                </div>
-                {noDateDeals.slice(0, 8).map((deal, i) => (
-                  <div key={`no-date-${deal.id || i}`} className="grid grid-cols-12 gap-2 p-2 border-b border-slate-700/30 items-center">
-                    <div className="col-span-5 text-sm text-white truncate">{deal.name}</div>
-                    <div className="col-span-2 text-right text-sm font-semibold text-red-400">{formatCurrency(deal.amount)}</div>
-                    <div className="col-span-3 text-center">
-                      <span className="px-2 py-1 rounded-full text-xs font-medium"
-                        style={{ backgroundColor: `${STAGE_COLORS[deal.stage] || THEME.gray}30`, color: STAGE_COLORS[deal.stage] || THEME.gray }}>
-                        {deal.stage || 'N/A'}
-                      </span>
-                    </div>
-                    <div className="col-span-2 text-center text-xs text-slate-400">
-                      {deal.owner?.split(' ')[1] || deal.owner?.split(' ')[0] || 'N/A'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ===== OWNER DETAIL TABLE ===== */}
-            <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-slate-400">👥</span>
-                <h2 className="text-lg font-semibold text-white">Pipeline by Deal Owner</h2>
-              </div>
-              <div className="text-xs text-slate-500 mb-4">Click a row to expand and see all deals</div>
-
-              {pipelineByOwner.map((owner, idx) => {
-                const expanded = expandedOwners[owner.owner];
-                const noDateCount = owner.dealList?.filter(d => !d.closeDate).length || 0;
-                const share = summary.totalPipeline > 0 ? ((owner.totalPipeline / summary.totalPipeline) * 100).toFixed(1) : 0;
-
-                return (
-                  <div key={`owner-${owner.owner}-${idx}`} className="mb-3">
-                    <div onClick={() => toggleOwner(owner.owner)}
-                      className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all ${
-                        expanded ? 'bg-slate-700 border-l-4' : 'bg-slate-800/50 hover:bg-slate-700/50 border-l-4 border-transparent'
-                      }`}
-                      style={{ borderLeftColor: expanded ? (TEAM_COLORS[owner.team] || THEME.teal) : 'transparent' }}>
-
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                          style={{ backgroundColor: TEAM_COLORS[owner.team] || THEME.teal }}>
-                          {owner.owner.split(' ').map(n => n[0]).join('').toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-white">{owner.owner}</div>
-                          <div className="text-sm text-slate-400">{owner.deals} deals</div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <div className="text-xs text-slate-400 uppercase">Pipeline</div>
-                          <div className="font-bold text-white">{formatCurrency(owner.totalPipeline)}</div>
-                        </div>
-                        <div className="text-right min-w-[60px]">
-                          <div className="text-xs text-slate-400 uppercase">Share</div>
-                          <div className="font-semibold text-slate-300">{share}%</div>
-                        </div>
-                        {noDateCount > 0 && (
-                          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-medium">
-                            ⚠ {noDateCount}
-                          </div>
-                        )}
-                        <span className="text-slate-400">{expanded ? '▲' : '▼'}</span>
-                      </div>
-                    </div>
-
-                    {expanded && owner.dealList && (
-                      <div className="mt-2 bg-slate-800/30 rounded-xl overflow-hidden border border-slate-700/50">
-                        <div className="grid grid-cols-12 gap-2 p-3 bg-slate-700/30 text-xs text-slate-400 uppercase tracking-wider font-medium">
-                          <div className="col-span-4">Deal</div>
-                          <div className="col-span-2 text-right">Annual</div>
-                          <div className="col-span-3 text-center">Stage</div>
-                          <div className="col-span-3 text-center">Close Date</div>
-                        </div>
-                        {owner.dealList.sort((a, b) => b.amount - a.amount).map((deal, di) => {
-                          const noDate = !deal.closeDate;
-                          return (
-                            <div key={`deal-${deal.id || di}`} className={`grid grid-cols-12 gap-2 p-3 border-t border-slate-700/30 items-center ${noDate ? 'bg-red-500/5' : ''}`}>
-                              <div className="col-span-4 text-sm text-white truncate flex items-center gap-2">
-                                {deal.name}{noDate && <span className="text-red-400">⚠</span>}
-                              </div>
-                              <div className="col-span-2 text-right text-sm font-medium text-white">{formatCurrency(deal.amount)}</div>
-                              <div className="col-span-3 text-center">
-                                <span className="px-2 py-1 rounded-full text-xs font-medium"
-                                  style={{ backgroundColor: `${STAGE_COLORS[deal.stage] || THEME.gray}30`, color: STAGE_COLORS[deal.stage] || THEME.gray }}>
-                                  {deal.stage || getStageName(deal.stageId) || 'N/A'}
-                                </span>
-                              </div>
-                              <div className={`col-span-3 text-center text-sm ${deal.closeDate ? 'text-slate-400' : 'text-red-400 font-medium'}`}>
-                                {deal.closeDate ? formatDate(deal.closeDate).replace(', 2026', '').replace(', 2025', '') : 'TBD'}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        <div className="p-3 bg-slate-700/50 flex justify-end gap-6 text-sm">
-                          <span className="text-slate-400">Total:</span>
-                          <span className="font-bold text-white">{formatCurrency(owner.totalPipeline)}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ===== FOOTER ===== */}
-            <footer className="bg-slate-900/50 rounded-xl p-8 text-center border border-slate-700/50">
-              <div className="flex items-center justify-center gap-3 mb-3">
-                <div className="bg-teal-500 text-white px-3 py-1 rounded-lg font-bold text-xl">V</div>
-                <span className="text-teal-400 text-xl font-semibold tracking-wider">VINCIT GROUP</span>
-              </div>
-              <div className="text-slate-400 italic mb-4">&quot;To Conquer&quot; — Reaching Full Potential Together</div>
-              <div className="text-slate-500 text-sm">
-                Data sourced from HubSpot CRM • Report generated {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </div>
-              <div className="text-slate-600 text-xs mt-1">Seven Brands • One Vision • Chemical, Sanitation & Engineering Excellence</div>
-              <div className="mt-4 pt-4 border-t border-slate-700/50 text-slate-500 text-xs uppercase tracking-wider">
-                Confidential — Executive Use Only
-              </div>
-            </footer>
-          </>
-        )}
-      </main>
-    </div>
-  );
-}
+                <div className="mt-3 bg-orange-500/10 border border-orange-500/30 rounded-lg px-4 py-2 text-sm text-
